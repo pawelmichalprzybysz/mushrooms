@@ -1,0 +1,285 @@
+"""
+Projekt polega na porównaniu różnych metod uczenia maszynowego. Porównanie ma ustalić, który z klasyfikatorów jest najlepszy
+do oceny czy dany grzyb jest jadalny czy też nie.
+
+Użyte metody:
+
+- Logistic Regression
+
+- Gaussian Naive Bayes
+
+- KNearest Neighbors
+
+- Decision Tree
+
+- Neural Links
+
+- Random Forest *
+
+ *Metoda zespołowa uczenia maszynowego dla klasyfikacji, regresji i innych zadań, która polega na konstruowaniu wielu drzew
+  decyzyjnych w czasie uczenia i generowaniu klasy,która jest dominantą klas (klasyfikacja) 
+  lub przewidywaną średnią (regresja) poszczególnych drzew.Losowe lasy decyzyjne poprawiają tendencję drzew decyzyjnych
+  do nadmiernego dopasowywania się do zestawu treningowego.*
+
+- Xg Boost *
+
+*XGBoost jest zbiorowym, bazującym na drzewach, algorytmem uczenia maszynowego, wykorzystującym strukturę wzmacniającą gradient.
+ XGBoost pozwala na wykorzystanie szerokiej gamy aplikacji do rozwiązywania definiowanych przez użytkownika problemów predykcji,
+ rankingu, klasyfikacji i regresji. Maszyny do zwiększania gradientu i XGBoost to metody drzewa zespołów. 
+ Wykorzystują one architekturę zstępowania gradientu w celu zastosowania zasady boost poor learners (CARTs). 
+ Extreme Gradient Boost znacząco poprawia szkielet GBM poprzez wdrożenie ulepszeń algorytmicznych i optymalizację systemów.*
+
+
+
+
+Informacje o Pliku / Legenda:
+
+Attribute Information: (classes: edible=e, poisonous=p)
+
+cap-shape: bell=b,conical=c,convex=x,flat=f, knobbed=k,sunken=s
+
+cap-surface: fibrous=f,grooves=g,scaly=y,smooth=s
+
+cap-color: brown=n,buff=b,cinnamon=c,gray=g,green=r,pink=p,purple=u,red=e,white=w,yellow=y
+
+bruises: bruises=t,no=f
+
+odor: almond=a,anise=l,creosote=c,fishy=y,foul=f,musty=m,none=n,pungent=p,spicy=s
+
+gill-attachment: attached=a,descending=d,free=f,notched=n
+
+gill-spacing: close=c,crowded=w,distant=d
+
+gill-size: broad=b,narrow=n
+
+gill-color: black=k,brown=n,buff=b,chocolate=h,gray=g, green=r,orange=o,pink=p,purple=u,red=e,white=w,yellow=y
+
+stalk-shape: enlarging=e,tapering=t
+
+stalk-root: bulbous=b,club=c,cup=u,equal=e,rhizomorphs=z,rooted=r,missing=?
+
+stalk-surface-above-ring: fibrous=f,scaly=y,silky=k,smooth=s
+
+stalk-surface-below-ring: fibrous=f,scaly=y,silky=k,smooth=s
+
+stalk-color-above-ring: brown=n,buff=b,cinnamon=c,gray=g,orange=o,pink=p,red=e,white=w,yellow=y
+
+stalk-color-below-ring: brown=n,buff=b,cinnamon=c,gray=g,orange=o,pink=p,red=e,white=w,yellow=y
+
+veil-type: partial=p,universal=u
+
+veil-color: brown=n,orange=o,white=w,yellow=y
+
+ring-number: none=n,one=o,two=t
+
+ring-type: cobwebby=c,evanescent=e,flaring=f,large=l,none=n,pendant=p,sheathing=s,zone=z
+
+spore-print-color: black=k,brown=n,buff=b,chocolate=h,green=r,orange=o,purple=u,white=w,yellow=y
+
+population: abundant=a,clustered=c,numerous=n,scattered=s,several=v,solitary=y
+
+habitat: grasses=g,leaves=l,meadows=m,paths=p,urban=u,waste=w,woods=d
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import plot_confusion_matrix, accuracy_score
+from keras.models import Sequential
+from keras.layers import Dense
+
+df=pd.read_csv('C:/Users/Paweł Przybysz/PycharmProjects/IO Projekt 2/mushrooms.csv')
+print('\nNumber of empty data cells:\n')
+print(df.isnull().sum())
+print('\n\nList and Number of unique values:\n')
+print(pd.concat({'unique values': df.apply(pd.unique), 'number of unique values': df.nunique()}, axis=1))
+
+categorical_cols = [col for col in df.columns if df[col].dtype=='object']
+label_encoder=LabelEncoder()
+labelled_df=df.copy()
+for col in categorical_cols:
+    labelled_df[col]=label_encoder.fit_transform(df[col])
+
+print('\n')
+print('\nTransform Table to numeric values:\n')
+print(labelled_df.head())
+
+correlation=labelled_df.corr()
+plt.figure(figsize=(15,10))
+sns.heatmap(correlation, cmap ='GnBu', annot=True)
+plt.show()
+
+count = df.iloc[:,0].value_counts()
+plt.figure(figsize=(7,10))
+sns.barplot(count.index, count.values, alpha=0.8, palette="pastel")
+plt.ylabel('Count', fontsize=20)
+plt.xlabel('Class', fontsize=20)
+plt.title('Number of poisonous/edible mushrooms')
+plt.show()
+
+#TRAIN SPLIT
+plt.style.use('dark_background')
+y=labelled_df.iloc[:,0]
+X=labelled_df.iloc[:,1:22]
+
+scaler=StandardScaler()
+feature_set=scaler.fit_transform(X)
+
+X_train,X_val,y_train,y_val=train_test_split(feature_set,y,test_size=0.2,random_state=0,)
+
+features = df.columns
+f, axes = plt.subplots(22,1, figsize=(15,150), sharey = True,)
+k = 1
+for i in range(0,22):
+    s = sns.countplot(x = features[k], data = df, ax=axes[i])
+    axes[i].set_xlabel(features[k], fontsize=20, )
+    axes[i].set_ylabel("Count", fontsize=20)
+    axes[i].tick_params(labelsize=15)
+    k = k+1
+    for p in s.patches:
+        s.annotate(format(p.get_height(), '.1f'),
+                   (p.get_x() + p.get_width() / 2., p.get_height()),
+                   ha = 'center', va = 'center',
+                   xytext = (0, 9),
+                   fontsize = 20,
+                   textcoords = 'offset points')
+                   
+f, axes = plt.subplots(22,1, figsize=(15,150), sharey = True) 
+k = 1
+for i in range(0,22):
+    s = sns.countplot(x = features[k], data = df, hue = 'class', ax=axes[i], palette = 'muted')
+    axes[i].set_xlabel(features[k], fontsize=20)
+    axes[i].set_ylabel("Count", fontsize=20)
+    axes[i].tick_params(labelsize=15)
+    axes[i].legend(loc=1, prop={'size': 20})
+    k = k+1
+    for p in s.patches:
+        s.annotate(format(p.get_height(), '.1f'), 
+        (p.get_x() + p.get_width() / 2., p.get_height()), 
+        ha = 'center', va = 'center', 
+        xytext = (0, 9), 
+        fontsize = 10,
+        textcoords = 'offset points')
+        
+#METHOD 1: Logistic Regression
+print('\n#METHOD 1: Logistic Regression\n')
+from sklearn.linear_model import LogisticRegression
+
+lr=LogisticRegression(C=0.01,solver='sag')
+lr.fit(X_train,y_train)
+pred=lr.predict(X_val)
+lr_acc=accuracy_score(pred,y_val)
+print('Method Accuracy:')
+print(lr_acc)
+
+plot_confusion_matrix(lr,X_val,y_val, display_labels=['Poison','No Poison'])
+plt.show()
+
+#METHOD 2: Gaussian Naive Bayes
+
+print('\n#METHOD 2: Gaussian Naive Bayes\n')
+from sklearn.naive_bayes import GaussianNB
+
+nb=GaussianNB()
+nb.fit(X_train,y_train)
+pred=nb.predict(X_val)
+nb_acc=accuracy_score(pred,y_val)
+print('Method Accuracy:')
+print(nb_acc)
+
+plot_confusion_matrix(nb,X_val,y_val,display_labels=['Poison','No Poison'])
+plt.show()
+
+#METHOD 3: KNearest Neighbors
+
+print('\n#METHOD 3: KNearest Neighbors\n')
+from sklearn.neighbors import KNeighborsClassifier
+
+knn=KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train,y_train)
+pred=knn.predict(X_val)
+knn_acc=accuracy_score(pred,y_val)
+print('Method Accuracy:')
+print(knn_acc)
+
+plot_confusion_matrix(knn,X_val,y_val,display_labels=['Poison','No Poison'])
+plt.show()
+
+#METHOD 4: Decision Tree
+
+print('\n#METHOD 4: Decision Tree\n')
+from sklearn.tree import DecisionTreeClassifier
+
+tree=DecisionTreeClassifier(criterion='entropy')
+tree.fit(X_train,y_train)
+pred=tree.predict(X_val)
+tree_acc=accuracy_score(pred,y_val)
+print('Method Accuracy:')
+print(tree_acc)
+
+plot_confusion_matrix(tree,X_val,y_val,display_labels=['Poison','No Poison'])
+plt.show()
+
+#METHOD 5: Random Forest
+
+print('\n#METHOD 5: Random Forest\n')
+from sklearn.ensemble import RandomForestClassifier
+
+forest=RandomForestClassifier(n_estimators=100,random_state=0)
+forest.fit(X_train,y_train)
+pred=forest.predict(X_val)
+forest_acc=accuracy_score(pred,y_val)
+print(forest_acc)
+
+plot_confusion_matrix(forest,X_val,y_val,display_labels=['Poison','No Poison'])
+plt.show()
+
+#METHOD 6: Xg Boost -> require Anaconda
+from xgboost import XGBClassifier
+print('\n#METHOD 6: XGBOOST\n')
+xgb=XGBClassifier()
+xgb.fit(X_train,y_train)
+pred=xgb.predict(X_val)
+xgb_acc=accuracy_score(pred,y_val)
+print('Method Accuracy:')
+print(xgb_acc)
+
+plot_confusion_matrix(xgb,X_val,y_val,display_labels=['Poison','No Poison'])
+plt.show()
+
+#METHOD 7: Neural Links -> require Anaconda
+
+print('\n#METHOD 7: Neural Links\n')
+
+undummy_X = df.iloc[:,1:23]
+undummy_y = df.iloc[:, 0]
+X = pd.get_dummies(undummy_X)
+y = pd.get_dummies(undummy_y)
+
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2)
+
+classifier=Sequential()
+classifier.add(Dense(64,activation='relu',input_dim=117))
+classifier.add(Dense(2,activation='softmax'))
+classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy'])
+classifier.fit(X_train,y_train,batch_size=10,epochs=10)
+
+
+y_pred=classifier.predict(X_test)
+
+y_pred=y_pred>0.5
+y_pred_int = y_pred.astype(int)
+
+neural_score = (accuracy_score(y_pred_int, y_test))
+print('\nMethod Accuracy:')
+print(neural_score)
+
+df_acc=pd.DataFrame({
+    'Models':['Logistic Regression','Gaussian Naive Bayes','KNeighbors','Decision Tree','Random Forest','Xg Boost', 'Neural Links'],
+    'Accuracy':[lr_acc,nb_acc,knn_acc,tree_acc,forest_acc,xgb_acc, neural_score]
+})
+df_acc.sort_values(by='Accuracy',ascending=False)
